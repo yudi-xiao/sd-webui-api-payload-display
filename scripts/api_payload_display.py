@@ -10,7 +10,7 @@ import gradio as gr
 import pydantic
 import numpy as np
 from PIL import Image
-
+from copy import deepcopy
 import modules.scripts as scripts
 from modules import shared, script_callbacks
 from modules.api.models import (
@@ -94,12 +94,12 @@ def selectable_script_payload(p: StableDiffusionProcessing) -> Dict:
 
     selectable_script: scripts.Script = script_runner.selectable_scripts[
         selectable_script_index - 1
-    ]
+        ]
     return {
         "script_name": selectable_script.title().lower(),
         "script_args": p.script_args[
-            selectable_script.args_from : selectable_script.args_to
-        ],
+                       selectable_script.args_from: selectable_script.args_to
+                       ],
     }
 
 
@@ -117,8 +117,20 @@ def alwayson_script_payload(p: StableDiffusionProcessing) -> Dict:
 
     all_scripts: Dict[str, List] = {}
     for alwayson_script in script_runner.alwayson_scripts:
-        all_scripts[alwayson_script.title()] = {
-            "args": p.script_args[alwayson_script.args_from : alwayson_script.args_to]
+        # skip empty args
+        args = deepcopy(p.script_args[alwayson_script.args_from: alwayson_script.args_to])
+        args_len = len(args)
+        module_title = alwayson_script.title()
+        if args_len == 0:
+            continue
+        if module_title == "ControlNet":
+            # handle ControlNet image key difference
+            for arg in args:
+                arg.image = None
+                arg.input_image = "base64image placeholder"
+
+        all_scripts[module_title] = {
+            "args": args
         }
     return {"alwayson_scripts": all_scripts}
 
@@ -135,16 +147,16 @@ def seed_enable_extras_payload(p: StableDiffusionProcessing) -> Dict:
     """
     return {
         "seed_enable_extras": not (
-            p.subseed == -1
-            and p.subseed_strength == 0
-            and p.seed_resize_from_h == 0
-            and p.seed_resize_from_w == 0
+                p.subseed == -1
+                and p.subseed_strength == 0
+                and p.seed_resize_from_h == 0
+                and p.seed_resize_from_w == 0
         )
     }
 
 
 def api_payload_dict(
-    p: StableDiffusionProcessing, api_request: pydantic.BaseModel
+        p: StableDiffusionProcessing, api_request: pydantic.BaseModel
 ) -> Dict:
     """Get the API payload as a JSON compatible dict.
     Argument:
@@ -219,7 +231,7 @@ class Script(scripts.Script):
         process_type_prefix = "img2img" if is_img2img else "txt2img"
 
         with gr.Accordion(
-            f"API payload", open=False, elem_classes=["api-payload-display"]
+                f"API payload", open=False, elem_classes=["api-payload-display"]
         ):
             # When front-end triggers this click event, data from backend will
             # be pushed to front-end.

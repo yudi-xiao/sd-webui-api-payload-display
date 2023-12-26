@@ -46,10 +46,41 @@
         }
     }
 
+    async function saveJson(jsonText, saveButton) {
+        try {
+            if (!navigator.clipboard) {
+                throw ('Clipboard API not available, please make sure you are using HTTPS.');
+            }
+
+            var json_blob = new Blob([jsonText], {type: "application/json;charset=utf-8"});
+            var blob_url = window.URL.createObjectURL(json_blob);
+            var download_link = document.createElement("a");
+            document.body.appendChild(download_link);
+            download_link.style = "display: none";
+            download_link.href = blob_url;
+            download_link.download = "api-payload.json";
+            download_link.click();
+            window.URL.revokeObjectURL(blob_url);
+            saveButton.innerHTML = "Saved!";
+            saveButton.classList.add('success');
+            saveButton.classList.remove('fail');
+
+            // After 3 seconds, revert the button text and style
+            setTimeout(() => {
+                saveButton.innerHTML = "Save💾";
+                saveButton.classList.remove('success');
+            }, 3000);
+        } catch (err) {
+            saveButton.innerHTML = "Failed to copy";
+            saveButton.classList.remove('success');
+            saveButton.classList.add('fail');
+        }
+    }
 
     function addCopyToClipboardButton(accordion, textarea) {
         const span = accordion.querySelector('.label-wrap span');
         const button = document.createElement('button');
+        const button_save = document.createElement('button');
         button.classList.add('api-payload-copy-button');
         button.innerHTML = 'Copy📋';
         button.addEventListener('click', event => {
@@ -57,7 +88,17 @@
             event.stopPropagation();
             copyText(textarea.value, button);
         });
+
+        button_save.classList.add('api-payload-copy-button');
+        button_save.innerHTML = 'Save💾';
+        button_save.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            saveJson(textarea.value, button_save)
+        })
+
         span.appendChild(button);
+        span.appendChild(button_save);
     }
 
     onUiUpdate(() => {
@@ -93,7 +134,7 @@
                     dataPromise.then(data => updateJsonTree(wrapper, data));
 
                     observer.disconnect();
-                }).observe(resultElement, { childList: true });
+                }).observe(resultElement, {childList: true});
             });
 
             addCopyToClipboardButton(panel, payloadTextbox);
