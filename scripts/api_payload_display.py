@@ -202,6 +202,9 @@ def api_payload_dict(
             value = [BASE64_IMAGE_PLACEHOLDER]
         result[name] = value
 
+        if name == "override_settings":
+            result[name] = get_options()
+
     return make_json_compatible(result)
 
 
@@ -209,6 +212,17 @@ def format_payload(payload: Optional[Dict]) -> str:
     if payload is None:
         return "No Payload Found"
     return json.dumps(payload, sort_keys=True, allow_nan=False)
+
+
+def get_options() -> dict:
+    options = {}
+    for key in shared.opts.data.keys():
+        metadata = shared.opts.data_labels.get(key)
+        if (metadata is not None):
+            options.update({key: shared.opts.data.get(key, shared.opts.data_labels.get(key).default)})
+        else:
+            options.update({key: shared.opts.data.get(key, None)})
+    return options
 
 
 class Script(scripts.Script):
